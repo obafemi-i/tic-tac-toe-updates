@@ -1,0 +1,144 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f3ef;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #24231f;
+  padding: 24px;
+}
+#app { width: 100%; max-width: 420px; }
+.screen { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.card {
+  background: #fff;
+  border: 1px solid #e3e1d8;
+  border-radius: 14px;
+  padding: 1.75rem;
+  width: 100%;
+}
+h1 { text-align: center; margin: 0 0 4px; font-size: 26px; font-weight: 600; }
+.sub { text-align: center; color: #7a7869; font-size: 14px; margin: 0 0 16px; }
+
+.theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.theme-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: #f4f3ef; border: 1.5px solid #e3e1d8; border-radius: 10px;
+  padding: 10px 4px; cursor: pointer;
+}
+.theme-btn.selected { border-color: #d97757; background: #fdf0ea; }
+.theme-marks { font-size: 22px; }
+.theme-name { font-size: 10.5px; color: #7a7869; text-align: center; line-height: 1.2; }
+
+.room-code {
+  font-size: 30px;
+  letter-spacing: 6px;
+  text-align: center;
+  font-weight: 600;
+  padding: 14px;
+  background: #f4f3ef;
+  border-radius: 10px;
+  border: 1px solid #e3e1d8;
+}
+input[type=text] {
+  width: 100%;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 6px;
+  font-size: 20px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc9ba;
+  margin-bottom: 12px;
+}
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+.primary-btn {
+  background: #d97757;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  width: 100%;
+}
+.primary-btn:hover { background: #c1683e; }
+.secondary-btn {
+  background: transparent;
+  color: #7a7869;
+  border: 1px solid #ccc9ba;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  width: 100%;
+}
+.error-text { color: #c33; font-size: 13px; text-align: center; min-height: 16px; margin: 8px 0 0; }
+
+.status { text-align: center; font-size: 16px; min-height: 24px; font-weight: 500; }
+.flavor { text-align: center; font-size: 13px; color: #d97757; font-weight: 500; min-height: 18px; opacity: 0; }
+.flavor-show { animation: flavorFade 2.4s ease forwards; }
+@keyframes flavorFade {
+  0% { opacity: 0; transform: translateY(-2px); }
+  15% { opacity: 1; transform: translateY(0); }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.board-wrap { position: relative; width: 300px; margin: 0 auto; }
+.board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 300px; }
+.cell {
+  aspect-ratio: 1;
+  background: #fff;
+  border: 1px solid #e3e1d8;
+  border-radius: 10px;
+  font-size: 42px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cell.playable { cursor: pointer; }
+.cell.playable:hover { background: #f4f3ef; }
+.cell.win { background: #fdf0ea; border-color: #d97757; animation: winPulse 1s ease infinite; }
+.cell.just-placed { animation: popIn 0.28s cubic-bezier(.34,1.56,.64,1); }
+@keyframes popIn {
+  0% { transform: scale(0.3); opacity: 0.2; }
+  70% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes winPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 87, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(217, 119, 87, 0); }
+}
+
+.confetti-layer {
+  position: absolute; inset: 0; pointer-events: none; overflow: visible;
+}
+.confetti-piece {
+  position: absolute;
+  top: 40%;
+  font-size: 20px;
+  animation-name: confettiBurst;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+@keyframes confettiBurst {
+  0% { transform: translateY(0) scale(0.6) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-140px) scale(1.1) rotate(180deg); opacity: 0; }
+}
+
+.players { display: flex; justify-content: space-between; width: 300px; margin: 0 auto; font-size: 13px; color: #7a7869; }
+.you-badge { font-weight: 600; color: #24231f; font-size: 15px; }
+.conn-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #c33;
+  margin-right: 6px;
+}
+.conn-dot.on { background: #4a9d5f; }
