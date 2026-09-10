@@ -49,6 +49,9 @@ function publicState(room) {
     rematch: room.rematch,
     theme: room.theme,
     lastMove: room.lastMove,
+    // Order the board was filled in, per cell — lets the client figure out
+    // how "grown" each mark should look without trusting anything client-side.
+    moveHistory: room.moveHistory,
   };
 }
 
@@ -74,6 +77,7 @@ io.on('connection', (socket) => {
       rematch: { X: false, O: false },
       theme,
       lastMove: null,
+      moveHistory: [],
     };
     socket.join(code);
     socket.data.room = code;
@@ -123,6 +127,7 @@ io.on('connection', (socket) => {
     if (typeof idx !== 'number' || idx < 0 || idx > 8 || room.board[idx]) return;
     room.board[idx] = symbol;
     room.lastMove = idx;
+    room.moveHistory.push({ idx, symbol });
     const result = checkWinner(room.board);
     if (result) {
       room.winner = result.winner;
@@ -146,6 +151,7 @@ io.on('connection', (socket) => {
       room.turn = 'X';
       room.rematch = { X: false, O: false };
       room.lastMove = null;
+      room.moveHistory = [];
     }
     broadcast(code);
   });

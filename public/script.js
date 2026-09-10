@@ -2,13 +2,29 @@
   const app = document.getElementById('app');
   const socket = io();
 
+  // `growth` is an ordered list of stages a mark visually passes through as
+  // its player keeps playing — index 0 is the newest mark, higher indices
+  // are "older" marks that have grown further. Every theme has one so the
+  // board-transforming effect isn't limited to just the garden theme.
   const THEMES = {
-    classic:   { name: 'Hugs & Kisses', marks: { X: '🤗', O: '😘' }, win: 'The board belongs to you!', draw: 'Nobody won. Everybody cooked.', block: 'Not today.', center: 'Bold choice.' },
-    catdog:    { name: 'Cats & Dogs',   marks: { X: '🐱', O: '🐶' }, win: 'Territory claimed!', draw: 'A cease-fire, for now.', block: 'Hiss. Blocked.', center: 'Claiming the middle.' },
-    daynight:  { name: 'Day & Night',   marks: { X: '🌞', O: '🌙' }, win: 'The sky is yours!', draw: 'Dawn and dusk, evenly matched.', block: 'Eclipsed.', center: 'Rising to the center.' },
-    firewater: { name: 'Fire & Water',  marks: { X: '🔥', O: '💧' }, win: 'Element mastered!', draw: 'Steam. Just steam.', block: 'Doused.', center: 'Igniting the middle.' },
-    food:      { name: 'Pizza & Burgers', marks: { X: '🍕', O: '🍔' }, win: 'Lunch has been decided!', draw: "Guess we're ordering both.", block: 'Order denied.', center: 'Taking the best slice.' },
-    garden:    { name: 'Garden Grower', marks: { X: '🌱', O: '🌸' }, win: 'The garden is yours!', draw: 'A well-tended tie.', block: 'Pruned.', center: 'Planting in the middle.' },
+    classic:   { name: 'Hugs & Kisses', marks: { X: '🤗', O: '😘' },
+      growth: { X: ['🤗', '🥰', '😍'], O: ['😘', '💋', '💘'] },
+      win: 'The board belongs to you!', draw: 'Nobody won. Everybody cooked.', block: 'Not today.', center: 'Bold choice.' },
+    catdog:    { name: 'Mangoes & Strawberries', marks: { X: '🥭', O: '🍓' },
+      growth: { X: ['🌱', '🍃', '🥭'], O: ['🌱', '🌸', '🍓'] },
+      win: 'Fruit basket claimed!', draw: 'A perfectly balanced smoothie.', block: 'Not ripe for the taking.', center: 'Picking the ripest spot.' },
+    daynight:  { name: 'Day & Night',   marks: { X: '🌞', O: '🌙' },
+      growth: { X: ['🌅', '🌤️', '🌞'], O: ['🌑', '🌓', '🌕'] },
+      win: 'The sky is yours!', draw: 'Dawn and dusk, evenly matched.', block: 'Eclipsed.', center: 'Rising to the center.' },
+    firewater: { name: 'Fire & Water',  marks: { X: '🔥', O: '💧' },
+      growth: { X: ['✨', '🔥', '💥'], O: ['💧', '🌧️', '🌊'] },
+      win: 'Element mastered!', draw: 'Steam. Just steam.', block: 'Doused.', center: 'Igniting the middle.' },
+    food:      { name: 'Spaghetti & Garlic Rice', marks: { X: '🍝', O: '🍚' },
+      growth: { X: ['🍅', '🧄', '🍝'], O: ['🌾', '🧄', '🍚'] },
+      win: 'Dinner has been decided!', draw: "Guess we're having both.", block: 'Order denied.', center: 'Claiming the best bite.' },
+    garden:    { name: 'Garden Grower', marks: { X: '🌱', O: '🌸' },
+      growth: { X: ['🌱', '🌿', '🌳'], O: ['🌷', '🌸', '💐'] },
+      win: 'The garden is yours!', draw: 'A well-tended tie.', block: 'Pruned.', center: 'Planting in the middle.' },
   };
   const STORAGE_KEY = 'ttt_session';
 
@@ -22,8 +38,35 @@
   // Local tracking for animation/commentary diffing (never trust these for
   // game logic — only for deciding what to animate/announce on this client).
   let prevBoard = emptyBoard();
+  let prevStages = new Array(9).fill(null);
   let lastAnnouncedMoveCount = 0;
   let winCelebrated = false;
+
+  // Figures out how "grown" each occupied cell should look: a cell's stage
+  // depends on how many *more* moves its own player has made since it was
+  // placed, using the server's authoritative move order — never guessed.
+  function computeGrowth(state) {
+    const theme = themeOf(state);
+    const history = state.moveHistory || [];
+    const symbolCounts = { X: 0, O: 0 };
+    const orderForCell = {};
+    history.forEach(({ idx, symbol }) => {
+      orderForCell[idx] = symbolCounts[symbol];
+      symbolCounts[symbol] += 1;
+    });
+    const cellStage = new Array(9).fill(null);
+    for (let i = 0; i < 9; i++) {
+      const symbol = state.board[i];
+      if (!symbol) continue;
+      const order = orderForCell.hasOwnProperty(i) ? orderForCell[i] : 0;
+      const total = symbolCounts[symbol];
+      const age = Math.max(0, total - 1 - order);
+      const stages = (theme.growth && theme.growth[symbol]) || [theme.marks[symbol]];
+      const stageIdx = Math.min(age, stages.length - 1);
+      cellStage[i] = { stageIdx, maxStage: stages.length - 1, mark: stages[stageIdx] };
+    }
+    return cellStage;
+  }
 
   function emptyBoard() { return Array(9).fill(null); }
   function themeOf(state) { return THEMES[(state && state.theme) || 'classic'] || THEMES.classic; }
@@ -133,6 +176,7 @@
 
   function resetLocalTracking(state) {
     prevBoard = state ? state.board.slice() : emptyBoard();
+    prevStages = state ? computeGrowth(state) : new Array(9).fill(null);
     lastAnnouncedMoveCount = state ? state.board.filter(Boolean).length : 0;
     winCelebrated = !!(state && state.winner);
   }
@@ -218,13 +262,25 @@
       if (!prevBoard[i] && state.board[i]) { newIdx = i; break; }
     }
 
+    const stages = computeGrowth(state);
     const winLine = state.line || [];
     boardEl.innerHTML = state.board.map((v, i) => {
       const playable = !v && !state.winner && bothIn && state.turn === mySymbol;
       const isWin = winLine.includes(i);
       const isNew = i === newIdx && filledCount > lastAnnouncedMoveCount;
-      const cls = ['cell', playable ? 'playable' : '', isWin ? 'win' : '', isNew ? 'just-placed' : ''].filter(Boolean).join(' ');
-      const mark = v ? theme.marks[v] : '';
+      const stage = stages[i];
+      const prevStage = prevStages[i];
+      // An existing mark "grows" when its stage index advances (its player
+      // made another move elsewhere) — distinct from a brand-new placement.
+      const grew = !isNew && stage && prevStage && stage.stageIdx > prevStage.stageIdx;
+      const justMaxed = grew && stage.stageIdx === stage.maxStage && prevStage.stageIdx < stage.maxStage;
+      const cls = ['cell',
+        playable ? 'playable' : '',
+        isWin ? 'win' : '',
+        isNew ? 'just-placed' : '',
+        grew ? 'grow-bump' : '',
+        justMaxed ? 'fully-grown' : ''].filter(Boolean).join(' ');
+      const mark = stage ? stage.mark : '';
       return `<div class="${cls}" data-idx="${i}">${mark}</div>`;
     }).join('');
     boardEl.querySelectorAll('.cell.playable').forEach((el) => {
@@ -263,6 +319,7 @@
     if (!state.winner) winCelebrated = false;
 
     prevBoard = state.board.slice();
+    prevStages = stages;
     lastAnnouncedMoveCount = Math.max(lastAnnouncedMoveCount, filledCount);
     if (!state.winner && filledCount === 0) lastAnnouncedMoveCount = 0; // rematch reset
 
