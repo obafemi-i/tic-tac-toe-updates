@@ -111,7 +111,6 @@
       <div class="screen">
         <div class="card">
           <h1>Tic-tac-toe</h1>
-          <p class="sub">Play with a friend, live, from anywhere</p>
           <p class="sub" style="margin-bottom:8px">Choose a theme</p>
           <div class="theme-grid">${themeCards}</div>
           <button class="primary-btn" id="createBtn">Create a room</button>
